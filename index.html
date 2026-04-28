@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>My Flying Game 🚀</title>
+<link rel="icon" type="image/png" href="images/face.png">
+<link href="https://fonts.googleapis.com/css2?family=Titan+One&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --pop-blue: #4834d4;
+    --pop-yellow: #f9ca24;
+    --pop-pink: #ff7979;
+    --pop-orange: #f0932b;
+    --pop-green: #6ab04c;
+    --pop-white: #ffffff;
+    --pop-dark: #30336b;
+    --sky-top: #1a1a7e;
+    --sky-bottom: #4834d4;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--sky-top), var(--sky-bottom));
+    font-family: 'Nunito', sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#gameCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+}
+
+#score-display {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Titan One', cursive;
+    font-size: 52px;
+    color: var(--pop-white);
+    text-shadow: 0 4px 0 var(--pop-dark), 0 0 20px rgba(249,202,36,0.8);
+    z-index: 10;
+    pointer-events: none;
+    transition: transform 0.1s;
+}
+
+#score-display.pop {
+    transform: translateX(-50%) scale(1.3);
+}
+
+#mute-btn {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    background: rgba(255,255,255,0.15);
+    border: 2px solid rgba(255,255,255,0.4);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
+    cursor: pointer;
+    z-index: 20;
+    backdrop-filter: blur(6px);
+    transition: background 0.2s, transform 0.15s;
+}
+#mute-btn:hover { background: rgba(255,255,255,0.3); transform: scale(1.1); }
+#mute-btn:active { transform: scale(0.95); }
+
+#overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+    background: radial-gradient(ellipse at center, rgba(72,52,212,0.85) 0%, rgba(48,51,107,0.95) 100%);
+    backdrop-filter: blur(4px);
+    transition: opacity 0.4s;
+}
+
+#overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#overlay-title {
+    font-family: 'Titan One', cursive;
+    font-size: clamp(36px, 8vw, 80px);
+    color: var(--pop-yellow);
+    text-shadow: 0 5px 0 #b37a00, 0 0 40px rgba(249,202,36,0.6);
+    text-align: center;
+    margin-bottom: 12px;
+    animation: floatTitle 2.5s ease-in-out infinite;
+}
+
+@keyframes floatTitle {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-12px); }
+}
+
+.score-card {
+    background: rgba(255,255,255,0.12);
+    border: 2px solid rgba(255,255,255,0.25);
+    border-radius: 20px;
+    padding: 16px 40px;
+    margin: 8px;
+    text-align: center;
+    backdrop-filter: blur(8px);
+    min-width: 220px;
+}
+.score-card .label {
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+.score-card .value {
+    font-family: 'Titan One', cursive;
+    font-size: 48px;
+    color: var(--pop-yellow);
+    text-shadow: 0 3px 0 #b37a00;
+}
+.score-card.best .value { color: var(--pop-green); text-shadow: 0 3px 0 #2d5a1b; }
+.score-cards-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+#cta-btn {
+    margin-top: 28px;
+    padding: 18px 50px;
+    font-family: 'Titan One', cursive;
+    font-size: 26px;
+    color: var(--pop-dark);
+    background: var(--pop-yellow);
+    border: none;
+    border-radius: 60px;
+    cursor: pointer;
+    box-shadow: 0 6px 0 #b37a00, 0 0 30px rgba(249,202,36,0.5);
+    transition: transform 0.1s, box-shadow 0.1s;
+    animation: pulse 1.6s ease-in-out infinite;
+}
+#cta-btn:hover  { transform: translateY(-3px); box-shadow: 0 9px 0 #b37a00, 0 0 40px rgba(249,202,36,0.7); }
+#cta-btn:active { transform: translateY(3px);  box-shadow: 0 3px 0 #b37a00; animation: none; }
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.05); }
+}
+
+#hint-text {
+    margin-top: 14px;
+    font-size: 15px;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 1px;
+}
+
+.star {
+    position: fixed;
+    border-radius: 50%;
+    background: white;
+    opacity: 0;
+    animation: twinkle var(--dur, 3s) ease-in-out var(--delay, 0s) infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+@keyframes twinkle {
+    0%, 100% { opacity: 0; transform: scale(0.5); }
+    50%       { opacity: var(--max-op, 0.8); transform: scale(1); }
+}
+
+#new-best-badge {
+    font-family: 'Titan One', cursive;
+    font-size: 22px;
+    color: var(--pop-orange);
+    text-shadow: 0 2px 0 #8a4500;
+    margin-top: -4px;
+    margin-bottom: 6px;
+    animation: badgePop 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+@keyframes badgePop {
+    0%  { transform: scale(0) rotate(-15deg); opacity: 0; }
+    70% { transform: scale(1.2) rotate(5deg); opacity: 1; }
+    100%{ transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.hidden { display: none !important; }
+</style>
+</head>
+
+<body>
+
+<div id="score-display" class="hidden">0</div>
+
+<button id="mute-btn" title="Toggle sound">🔊</button>
+
+<audio id="scoreSound" preload="auto" src="score.mp3"></audio>
+
+<div id="overlay">
+    <div id="overlay-title">✈️ Fly Saieee Fly!</div>
+    <div id="score-section" class="hidden">
+        <div id="new-best-badge" class="hidden">🏆 NEW HIGH SCORE!!</div>
+        <div class="score-cards-row">
+            <div class="score-card">
+                <div class="label">Your Score</div>
+                <div class="value" id="final-score">0</div>
+            </div>
+            <div class="score-card best">
+                <div class="label">Best Ever</div>
+                <div class="value" id="best-score">0</div>
+            </div>
+        </div>
+    </div>
+    <button id="cta-btn">🚀 Let's Fly!</button>
+    <div id="hint-text">Press SPACE or tap to jump</div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas  = document.getElementById('gameCanvas');
+const ctx     = canvas.getContext('2d');
+
+function resizeCanvas() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+const scoreDisplay = document.getElementById('score-display');
+const overlay      = document.getElementById('overlay');
+const overlayTitle = document.getElementById('overlay-title');
+const ctaBtn       = document.getElementById('cta-btn');
+const hintText     = document.getElementById('hint-text');
+const scoreSection = document.getElementById('score-section');
+const finalScoreEl = document.getElementById('final-score');
+const bestScoreEl  = document.getElementById('best-score');
+const newBestBadge = document.getElementById('new-best-badge');
+const muteBtn      = document.getElementById('mute-btn');
+
+let gameState  = 'idle';
+let frames     = 0;
+let score      = 0;
+let highScore  = parseInt(localStorage.getItem('mygame_highscore') || '0', 10);
+let obstacles  = [];
+let animFrameId = null;
+
+/* ── SPEED CONFIG — slower start, gentler ramp ── */
+const SPEED_INITIAL  = 1.5;   // 🐢 nice and slow at the beginning
+const SPEED_MAX      = 6.0;   // 🚀 max speed cap (was 8.0)
+const SPEED_RAMP     = 0.0004; // half the old ramp rate — stays easy longer
+let   gameSpeed      = SPEED_INITIAL;
+
+/* ── GAP CONFIG ── */
+const GAP_INITIAL = 220;
+const GAP_MIN     = 155;
+let   currentGap  = GAP_INITIAL;
+
+let isMuted = false;
+
+const bgMusic = new Audio("https://scrawny-aquamarine-udhbdkfvgp-3amuuxbgc8.edgeone.dev/Samay%20raina%20reacting%20to%20his%20hilarious%20singing%20%20Reddit%20reacts.mp3");
+bgMusic.loop   = true;
+bgMusic.volume = 0.6;
+
+const hitSound  = new Audio("hit.mp3");
+const scoreSound = document.getElementById('scoreSound');
+
+function playSound(audio) {
+    if (isMuted) return;
+    try { audio.currentTime = 0; audio.play(); } catch(e) {}
+}
+
+muteBtn.addEventListener('click', () => {
+    isMuted = !isMuted;
+    muteBtn.textContent = isMuted ? '🔇' : '🔊';
+    bgMusic.muted  = isMuted;
+    hitSound.muted = isMuted;
+});
+
+const samayImg = new Image();
+samayImg.src   = "images/face.png";
+
+const pillarTextures = [1, 2, 3].map(n => {
+    const img = new Image();
+    img.src = `images/${n}.jpeg`;
+    return img;
+});
+let pillarTextureIndex = 0; // tracks which texture is next — strict rotation
+
+const player = {
+    x:            80,
+    y:            0,
+    radius:       40,
+    velocity:     0,
+    gravity:      0.22,   // much floatier fall (was 0.38)
+    jumpStrength: -5.5,   // gentler jump to match (was -7.8)
+
+    draw() {
+        ctx.save();
+        const tilt = Math.max(-0.5, Math.min(0.5, this.velocity * 0.04));
+        ctx.translate(this.x, this.y);
+        ctx.rotate(tilt);
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(samayImg, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+        ctx.restore();
+    },
+
+    update() {
+        this.velocity += this.gravity;
+        this.y        += this.velocity;
+
+        if (this.y + this.radius >= canvas.height) {
+            this.y = canvas.height - this.radius;
+            triggerGameOver();
+        }
+
+        if (this.y - this.radius < 0) {
+            this.y        = this.radius;
+            this.velocity = 0;
+        }
+    },
+
+    jump() {
+        this.velocity = this.jumpStrength;
+    },
+
+    reset() {
+        this.y        = canvas.height / 3;
+        this.velocity = 0;
+    }
+};
+
+class Obstacle {
+    constructor() {
+        this.width     = 120;  // ← wider pillars (was 80) — bigger & easier to see
+        this.gap       = currentGap;
+        this.x         = canvas.width + 10;
+        this.topHeight = Math.random() * (canvas.height * 0.55 - 60) + 60;
+        this.bottomY   = this.topHeight + this.gap;
+        this.texture   = pillarTextures[pillarTextureIndex % pillarTextures.length];
+        pillarTextureIndex++; // advance so next pillar gets the next texture
+        this.passed    = false;
+    }
+
+    draw() {
+        ctx.drawImage(this.texture, this.x, 0, this.width, this.topHeight);
+        ctx.drawImage(this.texture, this.x, this.bottomY, this.width, canvas.height - this.bottomY);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(this.x - 4, this.topHeight - 16, this.width + 8, 16);
+        ctx.fillRect(this.x - 4, this.bottomY,        this.width + 8, 16);
+    }
+
+    update() {
+        this.x -= gameSpeed;
+    }
+
+    collidesWith(p) {
+        const withinX = p.x + p.radius > this.x && p.x - p.radius < this.x + this.width;
+        const hitTop  = p.y - p.radius < this.topHeight;
+        const hitBot  = p.y + p.radius > this.bottomY;
+        return withinX && (hitTop || hitBot);
+    }
+}
+
+function drawBackground() {
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0,   '#1a1a7e');
+    grad.addColorStop(0.6, '#4834d4');
+    grad.addColorStop(1,   '#6c5ce7');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function popScore() {
+    scoreDisplay.classList.add('pop');
+    clearTimeout(scoreDisplay._popTimer);
+    scoreDisplay._popTimer = setTimeout(() => scoreDisplay.classList.remove('pop'), 150);
+}
+
+function resetGame() {
+    player.reset();
+    obstacles    = [];
+    score        = 0;
+    frames       = 0;
+    gameSpeed    = SPEED_INITIAL;
+    currentGap   = GAP_INITIAL;
+    pillarTextureIndex = 0; // restart texture rotation from the first image
+    gameState    = 'playing';
+
+    scoreDisplay.textContent = '0';
+    scoreDisplay.classList.remove('hidden');
+
+    overlay.classList.add('hidden');
+
+    bgMusic.currentTime = 0;
+    if (!isMuted) bgMusic.play().catch(() => {});
+
+    if (animFrameId) cancelAnimationFrame(animFrameId);
+    loop();
+}
+
+function triggerGameOver() {
+    if (gameState !== 'playing') return;
+    gameState = 'dead';
+
+    bgMusic.pause();
+    playSound(hitSound);
+
+    const isNewBest = score > highScore;
+    if (isNewBest) {
+        highScore = score;
+        localStorage.setItem('mygame_highscore', highScore);
+    }
+
+    overlayTitle.textContent = score > 5 ? '😵 So Close!!' : '😂 Oops!';
+    ctaBtn.textContent       = '🔁 Try Again!';
+    finalScoreEl.textContent = score;
+    bestScoreEl.textContent  = highScore;
+
+    newBestBadge.classList.toggle('hidden', !isNewBest);
+    scoreSection.classList.remove('hidden');
+
+    overlay.classList.remove('hidden');
+    scoreDisplay.classList.add('hidden');
+}
+
+function spawnInterval() {
+    // starts at 170 frames apart, shrinks to ~120 at max speed — nice wide gaps!
+    return Math.round(170 - (gameSpeed - SPEED_INITIAL) / (SPEED_MAX - SPEED_INITIAL) * 50);
+}
+
+function loop() {
+    if (gameState !== 'playing') return;
+
+    drawBackground();
+
+    gameSpeed  = Math.min(SPEED_MAX, SPEED_INITIAL + frames * SPEED_RAMP);
+    currentGap = Math.max(GAP_MIN, GAP_INITIAL - frames * 0.02);
+
+    if (frames % spawnInterval() === 0) {
+        obstacles.push(new Obstacle());
+    }
+
+    obstacles = obstacles.filter(obs => {
+        obs.update();
+        obs.draw();
+
+        if (obs.collidesWith(player)) {
+            triggerGameOver();
+            return true;
+        }
+
+        if (!obs.passed && obs.x + obs.width < player.x) {
+            obs.passed = true;
+            score++;
+            scoreDisplay.textContent = score;
+            popScore();
+            playSound(scoreSound);
+        }
+
+        return obs.x + obs.width > -10;
+    });
+
+    player.update();
+    player.draw();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.font      = '500 13px Nunito, sans-serif';
+    ctx.fillText(`spd: ${gameSpeed.toFixed(1)}`, 10, canvas.height - 10);
+
+    frames++;
+    animFrameId = requestAnimationFrame(loop);
+}
+
+window.addEventListener('keydown', e => {
+    if (e.code === 'Space' || e.code === 'ArrowUp') {
+        e.preventDefault();
+        handleAction();
+    }
+    if (gameState !== 'playing') handleAction();
+});
+
+canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    handleAction();
+}, { passive: false });
+
+canvas.addEventListener('mousedown', e => {
+    handleAction();
+});
+
+ctaBtn.addEventListener('click', () => resetGame());
+
+function handleAction() {
+    if (gameState === 'idle' || gameState === 'dead') {
+        resetGame();
+    } else if (gameState === 'playing') {
+        player.jump();
+    }
+}
+
+(function spawnStars() {
+    const count = 60;
+    for (let i = 0; i < count; i++) {
+        const star    = document.createElement('div');
+        const size    = Math.random() * 3 + 1;
+        star.className = 'star';
+        star.style.cssText = `
+            width: ${size}px; height: ${size}px;
+            top:  ${Math.random() * 100}%;
+            left: ${Math.random() * 100}%;
+            --dur:    ${(Math.random() * 3 + 2).toFixed(1)}s;
+            --delay:  ${(Math.random() * 4).toFixed(1)}s;
+            --max-op: ${(Math.random() * 0.5 + 0.3).toFixed(2)};
+        `;
+        document.body.prepend(star);
+    }
+})();
+
+(function idleDraw() {
+    if (gameState !== 'playing') {
+        drawBackground();
+        player.y = canvas.height / 3 + Math.sin(Date.now() / 600) * 12;
+        player.draw();
+        requestAnimationFrame(idleDraw);
+    }
+})();
+</script>
+</body>
+</html>
